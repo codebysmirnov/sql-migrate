@@ -440,6 +440,7 @@ func ExecMax(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirecti
 // Returns the number of applied migrations.
 func (ms MigrationSet) ExecMax(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirection, max int) (int, error) {
 	migrations, dbMap, err := ms.PlanMigration(db, dialect, m, dir, max)
+
 	if err != nil {
 		return 0, err
 	}
@@ -463,7 +464,9 @@ func (ms MigrationSet) ExecMax(db *sql.DB, dialect string, m MigrationSource, di
 			stmt = strings.TrimSuffix(stmt, "\n")
 			stmt = strings.TrimSuffix(stmt, " ")
 			stmt = strings.TrimSuffix(stmt, ";")
+			fmt.Printf("SQL_MIGRATE_EXEC_STATEMENT %s\n", stmt)
 			if _, err := executor.Exec(stmt); err != nil {
+				fmt.Printf("SQL_MIGRATE_EXEC_executor.Exec(stmt) %s\n", err)
 				if trans, ok := executor.(*gorp.Transaction); ok {
 					_ = trans.Rollback()
 				}
@@ -478,6 +481,8 @@ func (ms MigrationSet) ExecMax(db *sql.DB, dialect string, m MigrationSource, di
 				Id:        migration.Id,
 				AppliedAt: time.Now(),
 			})
+			fmt.Printf("SQL_MIGRATE_EXEC_executor.Insert %s\n", err)
+
 			if err != nil {
 				if trans, ok := executor.(*gorp.Transaction); ok {
 					_ = trans.Rollback()
@@ -502,6 +507,7 @@ func (ms MigrationSet) ExecMax(db *sql.DB, dialect string, m MigrationSource, di
 
 		if trans, ok := executor.(*gorp.Transaction); ok {
 			if err := trans.Commit(); err != nil {
+				fmt.Printf("SQL_MIGRATE_EXEC_trans.Commit() %s\n", err)
 				return applied, newTxError(migration, err)
 			}
 		}
@@ -519,17 +525,21 @@ func PlanMigration(db *sql.DB, dialect string, m MigrationSource, dir MigrationD
 
 func (ms MigrationSet) PlanMigration(db *sql.DB, dialect string, m MigrationSource, dir MigrationDirection, max int) ([]*PlannedMigration, *gorp.DbMap, error) {
 	dbMap, err := ms.getMigrationDbMap(db, dialect)
+	fmt.Printf("SQL_MIGRATE_ms.getMigrationDbMap(): %+v ; %s\n", dbMap, err)
+
 	if err != nil {
 		return nil, nil, err
 	}
 
 	migrations, err := m.FindMigrations()
+	fmt.Printf("SQL_MIGRATE_m.FindMigrations(): %+v ; %s\n", migrations, err)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var migrationRecords []MigrationRecord
 	_, err = dbMap.Select(&migrationRecords, fmt.Sprintf("SELECT * FROM %s", dbMap.Dialect.QuotedTableForQuery(ms.SchemaName, ms.getTableName())))
+	fmt.Printf("SQL_MIGRATE_migrationRecords: %+v ; %s\n", migrationRecords, err)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -542,9 +552,13 @@ func (ms MigrationSet) PlanMigration(db *sql.DB, dialect string, m MigrationSour
 		})
 	}
 	sort.Sort(byId(existingMigrations))
+	fmt.Printf("SQL_MIGRATE_existingMigrations: %+v \n" ,existingMigrations)
+
 
 	// Make sure all migrations in the database are among the found migrations which
 	// are to be applied.
+	fmt.Printf("SQL_MIGRATE_IgnoreUnknown: %+v \n" ,ms.IgnoreUnknown)
+
 	if !ms.IgnoreUnknown {
 		migrationsSearch := make(map[string]struct{})
 		for _, migration := range migrations {
@@ -577,6 +591,7 @@ func (ms MigrationSet) PlanMigration(db *sql.DB, dialect string, m MigrationSour
 	if max > 0 && max < toApplyCount {
 		toApplyCount = max
 	}
+	fmt.Printf("SQL_MIGRATE_toApply: %+v \n" ,toApply)
 	for _, v := range toApply[0:toApplyCount] {
 
 		if dir == Up {
@@ -593,6 +608,7 @@ func (ms MigrationSet) PlanMigration(db *sql.DB, dialect string, m MigrationSour
 			})
 		}
 	}
+	fmt.Printf("SQL_MIGRATE_result: %+v \n" ,result)
 
 	return result, dbMap, nil
 }

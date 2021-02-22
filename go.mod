@@ -1,4 +1,4 @@
-module github.com/rubenv/sql-migrate
+module github.com/codebysmirnov/sql-migrate
 
 go 1.11
 
@@ -12,6 +12,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/mitchellh/cli v1.0.0
 	github.com/olekukonko/tablewriter v0.0.2
+	github.com/rubenv/sql-migrate v0.0.0-20210215143335-f84234893558
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
